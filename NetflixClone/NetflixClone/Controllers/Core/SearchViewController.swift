@@ -17,6 +17,13 @@ class SearchViewController: UIViewController {
         return table
     }()
 
+    private let searchController: UISearchController = {
+        let controller = UISearchController(searchResultsController: SearchResultsViewController())
+        controller.searchBar.placeholder = "Search for Movie or TV show"
+        controller.searchBar.searchBarStyle = .minimal
+        return controller
+    }()
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Search"
@@ -27,7 +34,12 @@ class SearchViewController: UIViewController {
         discoverTable.dataSource = self
         discoverTable.delegate = self
 
+        navigationItem.searchController = searchController
+        navigationController?.navigationBar.tintColor = .white
+
         fetchDiscoverMovies()
+
+        searchController.searchResultsUpdater = self
     }
 
     override func viewDidLayoutSubviews() {
@@ -68,5 +80,31 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 140
+    }
+}
+
+extension SearchViewController: UISearchResultsUpdating {
+    func updateSearchResults(for searchController: UISearchController) {
+        let searhBar = searchController.searchBar
+
+        guard let query = searhBar.text,
+        !query.trimmingCharacters(in: .whitespaces).isEmpty,
+        query.trimmingCharacters(in: .whitespaces).count >= 3,
+        let resultsController = searchController.searchResultsController as? SearchResultsViewController else {
+            return
+        }
+
+        APICaller.shared.search(with: query) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let titles):
+                    resultsController.titles = titles
+                    resultsController.searchResultsCollectionView.reloadData()
+
+                case .failure(let error):
+                    print(error.localizedDescription)
+                }
+            }
+        }
     }
 }
